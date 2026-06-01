@@ -215,6 +215,59 @@ Place the healBot folder in `.../Windower/addons/`
 | //hb ws waitfor (player) (tp)          | Waits for another player to use weaponskill at a certain TP (weaponskill shorthand)                           |
 | //hb ws nopartner                      | Does not wait for another player to use weaponskill tain TP (weaponskill shorthand)                           |
 
+#### Alliance Healing
+| Command                                | Action                                                                                                        |
+| ---------------------------------------| --------------------------------------------------------------------------------------------------------------|
+| //hb alliance on                       | Start monitoring and healing all alliance members in the same zone (default: off)                             |
+| //hb alliance off                      | Stop healing alliance members (own party only)                                                                |
+| //hb ally on/off                       | Shorthand for //hb alliance                                                                                   |
+
+> **Note:** Alliance members only expose HP% to Windower, not absolute HP values.  HealBot will
+> fall back to a 1500 HP estimate when calculating cure tiers for alliance members.  For best
+> results, individually `//hb watch` specific high-HP alliance members you want precise coverage
+> for — watched players have their HP tracked via packets and get accurate cure tier selection.
+
+#### Job Abilities & Stratagems
+| Command                                    | Action                                                                                                    |
+| -------------------------------------------| ----------------------------------------------------------------------------------------------------------|
+| //hb divinecaress on                       | Before each NA/status-removal spell, fire Divine Caress (WHM JA) to add enfeeble resistance (default: off)|
+| //hb divinecaress off                      | Disable automatic Divine Caress use                                                                        |
+| //hb dc on/off                             | Shorthand for //hb divinecaress                                                                            |
+| //hb nastratagem (stratagem name)          | Fire the named SCH stratagem before each NA/status-removal spell (e.g. Rapture, Accession)                |
+| //hb nastratagem off                       | Clear the NA stratagem                                                                                     |
+| //hb nastrat (stratagem name / off)        | Shorthand for //hb nastratagem                                                                             |
+| //hb curestratagem (stratagem name)        | Fire the named SCH stratagem before each cure spell (e.g. Penury, Celerity)                               |
+| //hb curestratagem off                     | Clear the cure stratagem                                                                                   |
+| //hb curestrat (stratagem name / off)      | Shorthand for //hb curestratagem                                                                           |
+
+> **How Divine Caress works:** HealBot fires Divine Caress on itself first (just like Divine Seal),
+> then immediately casts the NA spell on the target.  The spell lands with the enfeeble-resistance
+> augmentation applied by the JA.
+>
+> **How stratagems work:** The chosen stratagem fires first; HealBot then casts the cure/NA spell on
+> the next action cycle (identical to the existing Accession / Divine Seal mechanism).  Stratagems
+> are only used when a charge is available and the matching Arts are active.  Setting `nastratagem`
+> while `aoe_na` is also enabled is not recommended — use one or the other.
+
+#### GUI Control Panel
+| Command                                | Action                                                                                                        |
+| ---------------------------------------| --------------------------------------------------------------------------------------------------------------|
+| //hb gui                               | Toggle the clickable control panel on/off                                                                     |
+| //hb gui pos (x) (y)                   | Reposition the panel to screen coordinates x, y (default: 50, 150)                                           |
+
+The GUI panel is built entirely from Windower's built-in text library — **no additional addons are
+required**.  It displays all major settings in collapsible sections and supports mouse interaction:
+
+- **Left-click** a toggle row to switch it on/off
+- **Left-click** the left half of a numeric row (`[–]`) to decrease the value
+- **Right-click** (or left-click the right half, `[+]`) to increase the value
+- **Left-click** a text-input row (stratagem name, follow/assist target) to print the exact
+  `//hb` command to type in chat
+- **Left-click** a section header (`[v]` / `[>]`) to collapse or expand that section
+
+If clicks feel off by one row, tune `LINE_H` at the top of `HealBot_gui.lua` (increase if clicks
+land too high, decrease if too low).
+
 #### Debugging Commands
 | Command                                | Action                                                                                                        |
 | ---------------------------------------| --------------------------------------------------------------------------------------------------------------|
@@ -261,6 +314,10 @@ Reference each of these as well to setup customized buffs and debuff lists to be
     ['useDebuffs'] = false,                 -- (true | false) toggle. Turn on auto debuffing. - Not required. Turning on Debuffs.
     ['applyDebuffList'] = 'rdmExemplar',    -- (true | false) toggle. - This is not required. Debuff list to use on mob.
     ['ignoreTrusts'] = true,                -- (true | false) toggle. Option toggle to ignore trusts for healing.
+    ['heal_alliance'] = false,              -- (true | false) toggle. Heal all alliance members in zone (see note above re: HP accuracy).
+    ['use_divine_caress'] = false,          -- (true | false) toggle. Fire Divine Caress before each NA spell (WHM).
+    ['na_stratagem'] = 'Rapture',           -- (string | nil). SCH stratagem to fire before each NA spell. nil = disabled.
+    ['cure_stratagem'] = 'Penury',          -- (string | nil). SCH stratagem to fire before each cure spell. nil = disabled.
 },
 ```
 #### The following Custom setting entry is to assist the character Denorea as a DD job (WAR, COR, etc.) that is using Savage Blade at 1000 TP.
@@ -315,6 +372,50 @@ Reference each of these as well to setup customized buffs and debuff lists to be
     ['keep_AM3'] = true,                    -- Maintin AM3 - Will Weaponskill at 3000 TP If AM3 is not up.
 },
 ```
+
+#### The following Custom setting entry shows a WHM leading an alliance, using Divine Caress and Rapture before NA spells.
+
+```lua
+['whmAllianceLead'] = {
+    ['assist'] = false,
+    ['assistEngage'] = false,
+    ['follow'] = false,
+    ['independent'] = true,
+    ['autoshadows'] = false,
+    ['ignoreTrusts'] = true,
+    ['heal_alliance'] = true,               -- Heal all alliance members in zone
+    ['use_divine_caress'] = true,           -- Fire Divine Caress before each NA spell
+    ['na_stratagem'] = 'Rapture',           -- Fire Rapture before each NA spell (Light Arts required)
+    -- ['cure_stratagem'] = 'Celerity',     -- Optional: faster casts with Celerity
+},
+```
+
+> **Custom settings reference — all available keys:**
+>
+> | Key | Type | Description |
+> |-----|------|-------------|
+> | `assist` | bool | Enable auto-assist |
+> | `assistName` | string | Name of player to assist |
+> | `assistEngage` | bool | Engage target mob when assisting |
+> | `noapproach` | bool | Do not walk toward target when assisting |
+> | `follow` | bool | Enable auto-follow |
+> | `followTarget` | string | Name of player to follow |
+> | `followDist` | number | Follow distance |
+> | `independent` | bool | Independent mode (no assist target required) |
+> | `autoshadows` | bool | Auto-upkeep shadows (Utsusemi, Blink, etc.) |
+> | `ignoreTrusts` | bool | Skip Trust NPCs when healing |
+> | `useWeaponSkill` | string | Weapon skill name to use |
+> | `useWeaponSkillTP` | number | Minimum TP to fire weapon skill |
+> | `AM3_name` | string | Weapon skill to use at 3000 TP to maintain AM3 |
+> | `keep_AM3` | bool | Weaponskill at 3000 TP to maintain AM3 |
+> | `applySelfBuffList` | string | Buff list name to apply to self |
+> | `applyP1BuffList` … `applyP5BuffList` | string | Buff list name to apply to party slots 1–5 |
+> | `useDebuffs` | bool | Enable auto-debuffing on assist target |
+> | `applyDebuffList` | string | Debuff list name to load |
+> | `heal_alliance` | bool | Monitor and heal alliance members (all groups) |
+> | `use_divine_caress` | bool | Fire Divine Caress (WHM) before each NA spell |
+> | `na_stratagem` | string | SCH stratagem to fire before each NA spell |
+> | `cure_stratagem` | string | SCH stratagem to fire before each cure spell |
 
 # Thanks to the Original creator and others that modified before I found this!
 ## This is a mashup between Original and Updated Versions with additional features.
