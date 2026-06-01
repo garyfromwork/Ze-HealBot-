@@ -51,6 +51,7 @@ actions = require('HB_Actions')
 buffs = require('HealBot_buffHandling')
 require('HealBot_packetHandling')
 require('HealBot_queues')
+gui = require('HealBot_gui')
 
 local ipc_req = serialua.encode({method='GET', pk='buff_ids'})
 local can_act_statuses = S{0, 1, 5, 85}    --0/1/5/85 = idle/engaged/chocobo/other_mount
@@ -95,6 +96,7 @@ hb._events['load'] = windower.register_event('load', function()
     _G["healer"] = _libs.lor.actor.Actor.new()
     utils.load_configs()
     CureUtils.init_cure_potencies()
+    gui.init()
 
     local zone_info = windower.ffxi.get_info()
     if gaol_zones:contains(zone_info.zone) then
@@ -166,6 +168,8 @@ hb._events['zone'] = windower.register_event('zone change', function(new_id, old
     local zone_info = windower.ffxi.get_info()
     buffs.resetDebuffTimers('ALL')
     hb.active = false	-- Deactivate when zoned.
+    hb.aoe_action = nil
+    hb.aoe_action_time = nil
     offense.cleanup()
 
     if zone_info ~= nil then
@@ -265,6 +269,7 @@ hb._events['cmd'] = windower.register_event('addon command', processCommand)
     Acts as the run() method of a threaded application.
 --]]
 hb._events['render'] = windower.register_event('prerender', function()
+    gui.render()
     if not hb.configs_loaded then return end
     local now = os.clock()
     local moving = hb.isMoving()
@@ -381,7 +386,7 @@ local function _getMonitoredPlayers()
         for m = 1, pt[pt_keys[p]] do
             local pt_member = pt[pm_keys[p][m]]
             if my_zone == pt_member.zone then
-                if p == 1 or hb.extraWatchList:contains(pt_member.name) then
+                if p == 1 or (settings.heal_alliance and p > 1) or hb.extraWatchList:contains(pt_member.name) then
                     hb.addPlayer(targets, pt_member)
                 end
             end

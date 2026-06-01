@@ -88,6 +88,7 @@ function processCommand(command,...)
         windower.send_command(('lua %s %s'):format(command, _addon.name))
     elseif command == 'refresh' then
         utils.load_configs()
+        gui.init()
     elseif S{'start','on'}:contains(command) then
         hb.activate()
     elseif S{'stop','end','off'}:contains(command) then
@@ -337,6 +338,36 @@ function processCommand(command,...)
             settings.autoshadows = true
             atc('Autoshadows is now on.')
         end
+    elseif S{'alliance','ally'}:contains(command) then
+        utils.toggleX(settings, 'heal_alliance', args[1], 'Alliance healing', 'Alliance')
+    elseif S{'divinecaress','dc'}:contains(command) then
+        utils.toggleX(settings, 'use_divine_caress', args[1], 'Divine Caress for NA removal', 'DivineCaress')
+    elseif S{'nastratagem','nastrat'}:contains(command) then
+        if args[1] and args[1]:lower() ~= 'off' then
+            local strat_name = utils.formatActionName(table.concat(args,' '))
+            if light_strategems:contains(strat_name) or dark_strategems:contains(strat_name) then
+                settings.na_stratagem = strat_name
+                atc('NA stratagem set to: '..strat_name)
+            else
+                atc(123,'Error: Invalid stratagem name: '..strat_name)
+            end
+        else
+            settings.na_stratagem = nil
+            atc('NA stratagem cleared.')
+        end
+    elseif S{'curestratagem','curestrat'}:contains(command) then
+        if args[1] and args[1]:lower() ~= 'off' then
+            local strat_name = utils.formatActionName(table.concat(args,' '))
+            if light_strategems:contains(strat_name) or dark_strategems:contains(strat_name) then
+                settings.cure_stratagem = strat_name
+                atc('Cure stratagem set to: '..strat_name)
+            else
+                atc(123,'Error: Invalid stratagem name: '..strat_name)
+            end
+        else
+            settings.cure_stratagem = nil
+            atc('Cure stratagem cleared.')
+        end
     elseif S{'deactivateindoors','deactivate_indoors'}:contains(command) then
         utils.toggleX(settings, 'deactivateIndoors', args[1], 'Deactivation in indoor zones', 'DeactivateIndoors')
     elseif S{'activateoutdoors','activate_outdoors'}:contains(command) then
@@ -410,6 +441,18 @@ function processCommand(command,...)
     elseif S{'customsettings','custom'}:contains(command) then
         if not validate(args, 1, 'Error: No argument specified for Custom Settings') then return end
         utils.apply_custom_settings(args)
+    elseif command == 'gui' then
+        local sub = args[1] and args[1]:lower()
+        if sub == 'pos' then
+            local x, y = tonumber(args[2]), tonumber(args[3])
+            if x and y then
+                gui.set_pos(x, y)
+            else
+                atc(123, 'Usage: //hb gui pos <x> <y>')
+            end
+        else
+            gui.toggle()
+        end
     elseif S{'help','--help'}:contains(command) then
         help_text()
     elseif command == 'settings' then
@@ -610,6 +653,14 @@ function utils.apply_custom_settings(args)
                 utils.apply_debufflist({custom_settings['applyDebuffList']})
             elseif key == 'ignoreTrusts' then
                 settings.ignoreTrusts  = custom_settings['ignoreTrusts']
+            elseif key == 'heal_alliance' then
+                settings.heal_alliance = custom_settings['heal_alliance']
+            elseif key == 'use_divine_caress' then
+                settings.use_divine_caress = custom_settings['use_divine_caress']
+            elseif key == 'na_stratagem' then
+                settings.na_stratagem = custom_settings['na_stratagem']
+            elseif key == 'cure_stratagem' then
+                settings.cure_stratagem = custom_settings['cure_stratagem']
             end
         end
     else
@@ -912,7 +963,8 @@ function utils.load_configs()
         spam = {name='Stone'},
         healing = {min={cure=3,curaga=1,waltz=2,waltzga=1},curaga_min_targets=2},
         disable = {curaga=false},
-        ignoreTrusts=true, deactivateIndoors=true, activateOutdoors=false
+        ignoreTrusts=true, deactivateIndoors=true, activateOutdoors=false,
+        heal_alliance=false, use_divine_caress=false
     }
     local loaded = lor_settings.load('data/settings.lua', defaults)
     utils.update_settings(loaded)
@@ -1120,6 +1172,10 @@ function help_text()
         {'watch <player>','Monitors the given player/npc so they will be healed'},
         {'unwatch <player>','Stops monitoring the given player/npc (=/= ignore)'},
         {'ignoretrusts <on/off>','Toggles whether or not Trust NPCs should be ignored (default: on)'},
+        {'alliance [on/off]','Toggles healing of alliance members in other party groups (default: off)'},
+        {'divinecaress [on/off]','Toggles using Divine Caress (DNC) in place of NA spells when available (default: off)'},
+        {'nastratagem [<name> | off]','Sets a stratagem to use before each NA/status-removal spell (e.g. Rapture, Accession)'},
+        {'curestratagem [<name> | off]','Sets a stratagem to use before each cure spell (e.g. Penury, Celerity)'},
         {'ascmd','Sets a player to assist, toggles whether or not to engage, to approach target, or toggles being active with no argument'},
         {'wscmd1','Sets the weaponskill to use'},
         {'wscmd2','Sets when weaponskills should be used according to whether the mob HP is < or > the given amount'},
@@ -1130,6 +1186,7 @@ function help_text()
         {'actioninfo [pos <x> <y> | on | off]','Moves character status info, or toggles display with no argument (default: on)'},
         {'moveinfo [pos <x> <y> | on | off]','Moves movement status info, or toggles display with no argument (default: off)'},
         {'monitored [pos <x> <y> | on | off]','Moves monitored player list, or toggles display with no argument (default: on)'},
+        {'gui [pos <x> <y>]','Toggle the clickable control panel, or reposition it'},
         {'help','Displays this help text'}
     }
     local acmds = {

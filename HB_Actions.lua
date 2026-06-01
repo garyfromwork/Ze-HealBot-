@@ -107,10 +107,27 @@ function actions.get_defensive_action()
 end
 
 
+local function prepend_ja(ja_name, pending_action)
+    local ja = lor_res.action_for(ja_name)
+    if ja and healer:can_use(ja) and utils.ready_to_use(ja) then
+        healer:take_action({action=ja}, healer.name)
+        hb.aoe_action = pending_action
+        hb.aoe_action_time = os.clock()
+        return true
+    end
+    return false
+end
+
+
 function actions.take_action(player, partner, targ)
     if hb.aoe_action then
-        healer:take_action(hb.aoe_action)
-        return
+        if (os.clock() - (hb.aoe_action_time or 0)) > 8 then
+            hb.aoe_action = nil
+            hb.aoe_action_time = nil
+        else
+            healer:take_action(hb.aoe_action)
+            return
+        end
     end
     if settings.autoshadows == true then
         buffs.check_shadows()
@@ -127,20 +144,22 @@ function actions.take_action(player, partner, targ)
             buffs.debuffList[action.name][action.debuff.id].attempted = os.clock()
         end
         if action.action.divine_seal then
-            local divine_seal = lor_res.action_for("Divine Seal")
-            if healer:can_use(divine_seal) and utils.ready_to_use(divine_seal) then
-                healer:take_action({action=divine_seal}, healer.name)
-                hb.aoe_action = action
-                return true
-            end
+            if prepend_ja("Divine Seal", action) then return true end
         end
         if action.action.accession then
-            local accession = lor_res.action_for("Accession")
-            if healer:can_use(accession) and utils.ready_to_use(accession) then
-                healer:take_action({action=accession}, healer.name)
-                hb.aoe_action = action
-                return true
+            if prepend_ja("Accession", action) then return true end
+        end
+
+        if action.type == 'debuff' then
+            if settings.use_divine_caress then
+                if prepend_ja('Divine Caress', action) then return true end
             end
+            -- na_stratagem: guard against settings.aoe_na (not the mutated resource flag)
+            if settings.na_stratagem and not settings.aoe_na then
+                if prepend_ja(settings.na_stratagem, action) then return true end
+            end
+        elseif action.type == 'cure' and settings.cure_stratagem then
+            if prepend_ja(settings.cure_stratagem, action) then return true end
         end
 
         healer:take_action(action)

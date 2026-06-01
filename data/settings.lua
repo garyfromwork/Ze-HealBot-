@@ -57,4 +57,8 @@ return {
     ['deactivateIndoors'] = true,
     ['activateOutdoors'] = false,
     ['aoe_na'] = false,
+    ['heal_alliance'] = false,
+    ['use_divine_caress'] = false,
+    ['na_stratagem'] = nil,
+    ['cure_stratagem'] = nil,
 }
